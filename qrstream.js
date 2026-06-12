@@ -55,6 +55,7 @@ let senderScanTimeout = null;
 let senderScanActive = false;
 let receiverScanActive = false;
 let activeSessionId = null;
+let senderHandshakeRatio = 1.0; // Pacing adjustment ratio from handshake
 let receiverN = 1;
 let receiverTotalDataFrames = 0;
 let receiverFileSize = 0;
@@ -82,8 +83,24 @@ document.addEventListener('DOMContentLoaded', () => {
     updateConfigPreview();
   });
   document.getElementById('setting-hz').addEventListener('input', () => {
-    document.getElementById('val-hz').textContent = `${document.getElementById('setting-hz').value} Hz`;
+    const val = document.getElementById('setting-hz').value;
+    document.getElementById('val-hz').textContent = `${val} Hz`;
+    document.getElementById('send-setting-hz').value = val;
+    document.getElementById('send-val-hz').textContent = `${val} Hz`;
     updateConfigPreview();
+  });
+
+  document.getElementById('send-setting-hz').addEventListener('input', () => {
+    const val = document.getElementById('send-setting-hz').value;
+    document.getElementById('setting-hz').value = val;
+    document.getElementById('val-hz').textContent = `${val} Hz`;
+    updateConfigPreview();
+    if (senderHandshakeRatio < 1.0) {
+      const activeHz = val * senderHandshakeRatio;
+      document.getElementById('send-val-hz').textContent = `${val} Hz (Active: ${activeHz.toFixed(1)} Hz)`;
+    } else {
+      document.getElementById('send-val-hz').textContent = `${val} Hz`;
+    }
   });
 
   // Navigation Click Handlers
@@ -166,6 +183,7 @@ function resetSenderUI() {
   selectedFile = null;
   selectedFileData = null;
   senderPreRenderedQRs = [];
+  senderHandshakeRatio = 1.0;
   
   const fileInput = document.getElementById('file-input');
   if (fileInput) fileInput.value = "";
@@ -339,6 +357,11 @@ async function initializeSenderUploadWorkflow() {
   document.getElementById('send-progress-percent').textContent = 'Ready';
   document.getElementById('send-progress-bar').style.width = '0%';
 
+  // Initialize live slider value and text badge
+  const initialHz = document.getElementById('setting-hz').value;
+  document.getElementById('send-setting-hz').value = initialHz;
+  document.getElementById('send-val-hz').textContent = `${initialHz} Hz`;
+
   // Reset Start button state
   const startBtn = document.getElementById('btn-start-sprint');
   if (startBtn) {
@@ -365,9 +388,8 @@ function startSenderSprintWorkflow() {
   setTimeout(() => {
     document.getElementById('send-status-label').textContent = 'Phase 1: Sprint Transmitting...';
     let currentFrameIdx = 1;
-    const intervalMs = 1000 / hz;
 
-    senderLoopInterval = setInterval(() => {
+    function runSprintTick() {
       if (currentFrameIdx <= params.totalDataFrames) {
         drawPreRenderedQR(currentFrameIdx);
         
@@ -378,15 +400,23 @@ function startSenderSprintWorkflow() {
         document.getElementById('send-progress-bar').style.width = `${pct}%`;
         
         currentFrameIdx++;
+
+        // Get live Hz value from the slider
+        const liveHz = parseInt(document.getElementById('send-setting-hz').value);
+        const intervalMs = 1000 / liveHz;
+        senderLoopInterval = setTimeout(runSprintTick, intervalMs);
       } else {
         // Finished the Sprint
-        clearInterval(senderLoopInterval);
         senderLoopInterval = null;
         
         // Step 4: The Switch
         initiateSenderReportCardScan(params);
       }
-    }, intervalMs);
+    }
+
+    // Schedule first tick
+    const liveHz = parseInt(document.getElementById('send-setting-hz').value);
+    senderLoopInterval = setTimeout(runSprintTick, 1000 / liveHz);
 
   }, 500); // Hardcoded 0.5s delay
 }
@@ -600,6 +630,12 @@ function processSenderReportCardFrame() {
               // All frames successfully transferred
               showSuccessScreen();
             } else {
+              const totalDataFrames = senderPreRenderedQRs.length - 1;
+              const missingDataFrames = missingIndices.filter(idx => idx > 0).length;
+              const transferRate = (totalDataFrames - missingDataFrames) / totalDataFrames;
+              senderHandshakeRatio = Math.max(0.1, 0.1 + (transferRate - 0.1) / 0.9);
+              console.log(`Handshake complete. Transfer rate: ${(transferRate * 100).toFixed(1)}%. Handshake ratio: ${senderHandshakeRatio.toFixed(3)}`);
+              
               // Launch Phase 2 Targeted Loop
               startSenderTargetedLoop(missingIndices);
             }
@@ -620,10 +656,8 @@ function startSenderTargetedLoop(missingIndices) {
   document.getElementById('send-status-label').textContent = `Phase 2: Flashing ${missingIndices.length} missing frames in loop...`;
 
   let loopIdx = 0;
-  const hz = parseInt(document.getElementById('setting-hz').value);
-  const intervalMs = 1000 / hz;
 
-  senderLoopInterval = setInterval(() => {
+  function runTargetedLoopTick() {
     const frameToFlash = missingIndices[loopIdx];
     drawPreRenderedQR(frameToFlash);
     
@@ -631,8 +665,25 @@ function startSenderTargetedLoop(missingIndices) {
     document.getElementById('send-progress-percent').textContent = 'Looping';
     document.getElementById('send-progress-bar').style.width = '100%';
     
+    // Read live base Hz from the slider
+    const baseHz = parseInt(document.getElementById('send-setting-hz').value);
+    const activeHz = baseHz * senderHandshakeRatio;
+    
+    // Update live text badge to show the active frequency
+    document.getElementById('send-val-hz').textContent = `${baseHz} Hz (Active: ${activeHz.toFixed(1)} Hz)`;
+    
     loopIdx = (loopIdx + 1) % missingIndices.length;
-  }, intervalMs);
+    
+    const intervalMs = 1000 / activeHz;
+    senderLoopInterval = setTimeout(runTargetedLoopTick, intervalMs);
+  }
+
+  // Schedule first tick
+  const baseHz = parseInt(document.getElementById('send-setting-hz').value);
+  const activeHz = baseHz * senderHandshakeRatio;
+  document.getElementById('send-val-hz').textContent = `${baseHz} Hz (Active: ${activeHz.toFixed(1)} Hz)`;
+  
+  senderLoopInterval = setTimeout(runTargetedLoopTick, 1000 / activeHz);
 }
 
 function showSuccessScreen() {
