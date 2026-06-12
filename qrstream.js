@@ -563,9 +563,7 @@ function processSenderReportCardFrame() {
       scanCtx.drawImage(video, 0, 0, targetW, targetH);
       
       const imageData = scanCtx.getImageData(0, 0, targetW, targetH);
-      const code = jsQR(imageData.data, targetW, targetH, {
-        inversionAttempts: "attemptBoth"
-      });
+      const code = jsQR(imageData.data, targetW, targetH);
       
       if (code) {
         console.log("Sender scanned QR (Report Card):", code.data || "[Binary]", code.binaryData);
@@ -742,9 +740,7 @@ function processReceiverFrame() {
       scanCtx.drawImage(video, 0, 0, targetW, targetH);
       
       const imageData = scanCtx.getImageData(0, 0, targetW, targetH);
-      const code = jsQR(imageData.data, targetW, targetH, {
-        inversionAttempts: "attemptBoth"
-      });
+      const code = jsQR(imageData.data, targetW, targetH);
       
       if (code) {
         console.log("Receiver scanned QR:", code.data || "[Binary]", code.binaryData);
