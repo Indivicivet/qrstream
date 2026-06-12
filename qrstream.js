@@ -477,8 +477,21 @@ async function initiateSenderReportCardScan(params) {
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', focusMode: 'continuous' }
+      video: { facingMode: 'environment' }
     });
+    
+    // Attempt continuous autofocus constraint safely
+    const track = stream.getVideoTracks()[0];
+    if (track && typeof track.applyConstraints === 'function') {
+      try {
+        await track.applyConstraints({
+          advanced: [{ focusMode: 'continuous' }]
+        });
+      } catch (e) {
+        console.warn('Continuous focus constraint not supported:', e);
+      }
+    }
+
     const sendVideo = document.getElementById('send-video');
     sendVideo.srcObject = stream;
     currentActiveVideo = sendVideo;
@@ -517,55 +530,75 @@ function processSenderReportCardFrame() {
   
   const video = document.getElementById('send-video');
   if (video.readyState >= video.HAVE_CURRENT_DATA) {
-    if (scanCanvas.width !== video.videoWidth || scanCanvas.height !== video.videoHeight) {
-      scanCanvas.width = video.videoWidth;
-      scanCanvas.height = video.videoHeight;
-    }
-    scanCtx.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
-    
-    const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
-    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: "dontInvert"
-    });
-    
-    if (code && code.binaryData && code.binaryData.length >= 2) {
-      // Decode Report Card
-      const scannedBytes = new Uint8Array(code.binaryData);
-      const scannedSessionId = scannedBytes[0];
-      const scannedTotalFrames = scannedBytes[1];
-      
-      // Verify Session compatibility
-      if (scannedSessionId === activeSessionId && scannedTotalFrames === senderPreRenderedQRs.length - 1) { // Total data frames count
-        // Stop scanning
-        senderScanActive = false;
-        if (senderScanTimeout) {
-          clearInterval(senderScanTimeout);
-          senderScanTimeout = null;
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      // Downscale frame for jsQR performance (max 480px)
+      const maxDim = 480;
+      let targetW = video.videoWidth;
+      let targetH = video.videoHeight;
+      if (targetW > maxDim || targetH > maxDim) {
+        const aspect = targetW / targetH;
+        if (targetW > targetH) {
+          targetW = maxDim;
+          targetH = Math.round(maxDim / aspect);
+        } else {
+          targetH = maxDim;
+          targetW = Math.round(maxDim * aspect);
         }
-        stopCamera(video);
-        
-        // Parse missing frames from bitfield
-        const missingIndices = [];
-        const bitfield = scannedBytes.slice(2);
-        const totalFramesCount = senderPreRenderedQRs.length; // Metadata frame 0 + data frames 1..M
-        
-        for (let i = 0; i < totalFramesCount; i++) {
-          const byteIdx = Math.floor(i / 8);
-          const bitIdx = i % 8;
-          const received = (bitfield[byteIdx] & (1 << bitIdx)) !== 0;
-          if (!received) {
-            missingIndices.push(i);
+      }
+
+      if (scanCanvas.width !== targetW || scanCanvas.height !== targetH) {
+        scanCanvas.width = targetW;
+        scanCanvas.height = targetH;
+      }
+      scanCtx.drawImage(video, 0, 0, targetW, targetH);
+      
+      const imageData = scanCtx.getImageData(0, 0, targetW, targetH);
+      const code = jsQR(imageData.data, targetW, targetH, {
+        inversionAttempts: "attemptBoth"
+      });
+      
+      if (code) {
+        console.log("Sender scanned QR (Report Card):", code.data || "[Binary]", code.binaryData);
+        if (code.binaryData && code.binaryData.length >= 2) {
+          // Decode Report Card
+          const scannedBytes = new Uint8Array(code.binaryData);
+          const scannedSessionId = scannedBytes[0];
+          const scannedTotalFrames = scannedBytes[1];
+          
+          // Verify Session compatibility
+          if (scannedSessionId === activeSessionId && scannedTotalFrames === senderPreRenderedQRs.length - 1) { // Total data frames count
+            // Stop scanning
+            senderScanActive = false;
+            if (senderScanTimeout) {
+              clearInterval(senderScanTimeout);
+              senderScanTimeout = null;
+            }
+            stopCamera(video);
+            
+            // Parse missing frames from bitfield
+            const missingIndices = [];
+            const bitfield = scannedBytes.slice(2);
+            const totalFramesCount = senderPreRenderedQRs.length; // Metadata frame 0 + data frames 1..M
+            
+            for (let i = 0; i < totalFramesCount; i++) {
+              const byteIdx = Math.floor(i / 8);
+              const bitIdx = i % 8;
+              const received = (bitfield[byteIdx] & (1 << bitIdx)) !== 0;
+              if (!received) {
+                missingIndices.push(i);
+              }
+            }
+            
+            if (missingIndices.length === 0) {
+              // All frames successfully transferred
+              showSuccessScreen();
+            } else {
+              // Launch Phase 2 Targeted Loop
+              startSenderTargetedLoop(missingIndices);
+            }
+            return;
           }
         }
-        
-        if (missingIndices.length === 0) {
-          // All frames successfully transferred
-          showSuccessScreen();
-        } else {
-          // Launch Phase 2 Targeted Loop
-          startSenderTargetedLoop(missingIndices);
-        }
-        return;
       }
     }
   }
@@ -614,8 +647,21 @@ async function startReceiverWorkflow() {
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', focusMode: 'continuous' }
+      video: { facingMode: 'environment' }
     });
+    
+    // Attempt continuous autofocus constraint safely
+    const track = stream.getVideoTracks()[0];
+    if (track && typeof track.applyConstraints === 'function') {
+      try {
+        await track.applyConstraints({
+          advanced: [{ focusMode: 'continuous' }]
+        });
+      } catch (e) {
+        console.warn('Continuous focus constraint not supported:', e);
+      }
+    }
+
     const receiveVideo = document.getElementById('receive-video');
     receiveVideo.srcObject = stream;
     currentActiveVideo = receiveVideo;
@@ -658,19 +704,39 @@ function processReceiverFrame() {
   
   const video = document.getElementById('receive-video');
   if (video.readyState >= video.HAVE_CURRENT_DATA) {
-    if (scanCanvas.width !== video.videoWidth || scanCanvas.height !== video.videoHeight) {
-      scanCanvas.width = video.videoWidth;
-      scanCanvas.height = video.videoHeight;
-    }
-    scanCtx.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
-    
-    const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
-    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: "dontInvert"
-    });
-    
-    if (code && code.binaryData && code.binaryData.length >= 4) {
-      handleScannedReceiverData(new Uint8Array(code.binaryData));
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      // Downscale frame for jsQR performance (max 480px)
+      const maxDim = 480;
+      let targetW = video.videoWidth;
+      let targetH = video.videoHeight;
+      if (targetW > maxDim || targetH > maxDim) {
+        const aspect = targetW / targetH;
+        if (targetW > targetH) {
+          targetW = maxDim;
+          targetH = Math.round(maxDim / aspect);
+        } else {
+          targetH = maxDim;
+          targetW = Math.round(maxDim * aspect);
+        }
+      }
+
+      if (scanCanvas.width !== targetW || scanCanvas.height !== targetH) {
+        scanCanvas.width = targetW;
+        scanCanvas.height = targetH;
+      }
+      scanCtx.drawImage(video, 0, 0, targetW, targetH);
+      
+      const imageData = scanCtx.getImageData(0, 0, targetW, targetH);
+      const code = jsQR(imageData.data, targetW, targetH, {
+        inversionAttempts: "attemptBoth"
+      });
+      
+      if (code) {
+        console.log("Receiver scanned QR:", code.data || "[Binary]", code.binaryData);
+        if (code.binaryData && code.binaryData.length >= 4) {
+          handleScannedReceiverData(new Uint8Array(code.binaryData));
+        }
+      }
     }
   }
   
