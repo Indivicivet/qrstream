@@ -7,3 +7,8 @@ Stream data optically (via QR code) -- screen to camera. Opposite camera <-> scr
 Sender flashes a QR code with metadata, then QR codes containing binary data.
 
 If any frames are missed, the receiver displays a QR code to request specific dropped frames. The sender scans this card and loops only the missing frames.
+
+## todos
+
+- slightly clearer transmission buttons, state, etc (UX)
+- just only have one streaming phase if stream time < 3s or so?
