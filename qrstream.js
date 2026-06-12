@@ -167,13 +167,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // View Navigation Manager
 function showView(viewId) {
-  const views = ['main-screen', 'send-screen', 'receive-screen'];
-  views.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      if (id === viewId) el.classList.add('active');
-      else el.classList.remove('active');
-    }
+  document.querySelectorAll('.view-panel').forEach(el => {
+    el.classList.toggle('active', el.id === viewId);
   });
 }
 
@@ -289,6 +284,19 @@ function calculateSessionParams(fileSize, version, eccLevel) {
     payloadSize,
     totalDataFrames
   };
+}
+
+// Helper to downscale camera frame dimensions to a max bounding box while preserving aspect ratio
+function getDownscaledDimensions(width, height, maxDim = 480) {
+  if (width <= maxDim && height <= maxDim) {
+    return { width, height };
+  }
+  const aspect = width / height;
+  if (width > height) {
+    return { width: maxDim, height: Math.round(maxDim / aspect) };
+  } else {
+    return { width: Math.round(maxDim * aspect), height: maxDim };
+  }
 }
 
 function updateConfigPreview() {
@@ -569,19 +577,7 @@ function processSenderReportCardFrame() {
   if (video.readyState >= video.HAVE_CURRENT_DATA) {
     if (video.videoWidth > 0 && video.videoHeight > 0) {
       // Downscale frame for jsQR performance (max 480px)
-      const maxDim = 480;
-      let targetW = video.videoWidth;
-      let targetH = video.videoHeight;
-      if (targetW > maxDim || targetH > maxDim) {
-        const aspect = targetW / targetH;
-        if (targetW > targetH) {
-          targetW = maxDim;
-          targetH = Math.round(maxDim / aspect);
-        } else {
-          targetH = maxDim;
-          targetW = Math.round(maxDim * aspect);
-        }
-      }
+      const { width: targetW, height: targetH } = getDownscaledDimensions(video.videoWidth, video.videoHeight);
 
       if (scanCanvas.width !== targetW || scanCanvas.height !== targetH) {
         scanCanvas.width = targetW;
@@ -764,19 +760,7 @@ function processReceiverFrame() {
   if (video.readyState >= video.HAVE_CURRENT_DATA) {
     if (video.videoWidth > 0 && video.videoHeight > 0) {
       // Downscale frame for jsQR performance (max 480px)
-      const maxDim = 480;
-      let targetW = video.videoWidth;
-      let targetH = video.videoHeight;
-      if (targetW > maxDim || targetH > maxDim) {
-        const aspect = targetW / targetH;
-        if (targetW > targetH) {
-          targetW = maxDim;
-          targetH = Math.round(maxDim / aspect);
-        } else {
-          targetH = maxDim;
-          targetW = Math.round(maxDim * aspect);
-        }
-      }
+      const { width: targetW, height: targetH } = getDownscaledDimensions(video.videoWidth, video.videoHeight);
 
       if (scanCanvas.width !== targetW || scanCanvas.height !== targetH) {
         scanCanvas.width = targetW;
