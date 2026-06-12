@@ -162,19 +162,27 @@ function showView(viewId) {
 
 // UI Reset Helpers
 function resetSenderUI() {
+  cleanupMedia();
+  selectedFile = null;
+  selectedFileData = null;
+  senderPreRenderedQRs = [];
+  
+  const fileInput = document.getElementById('file-input');
+  if (fileInput) fileInput.value = "";
+  
   document.getElementById('send-init-view').classList.remove('hidden');
   document.getElementById('send-active-view').classList.add('hidden');
   document.getElementById('send-scan-view').classList.add('hidden');
-  if (selectedFile) {
-    document.getElementById('file-info').classList.remove('hidden');
-  } else {
-    document.getElementById('file-info').classList.add('hidden');
-  }
+  document.getElementById('file-info').classList.add('hidden');
 }
 
 function resetReceiverUI() {
+  cleanupMedia();
+  resetReceiverSessionState();
+  
   document.getElementById('receive-active-view').classList.remove('hidden');
   document.getElementById('report-card-container').classList.add('hidden');
+  document.getElementById('receive-status-label').textContent = 'Waiting for camera...';
   
   const receiveVideoWrapper = document.getElementById('receive-video-wrapper');
   if (receiveVideoWrapper) {
