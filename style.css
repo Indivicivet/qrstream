@@ -1,0 +1,470 @@
+/* Minimal and clean layout styling for QRStream */
+
+:root {
+  --bg-color: #f3f4f6;
+  --panel-bg: #ffffff;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --border-color: #d1d5db;
+  
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-success: #059669;
+  --color-success-hover: #047857;
+  --color-danger: #dc2626;
+  --color-danger-hover: #b91c1c;
+  --color-secondary: #4b5563;
+  --color-secondary-hover: #374151;
+
+  --font-stack: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-stack);
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  line-height: 1.5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.app-container {
+  width: 100%;
+  max-width: 480px;
+  padding: 16px;
+  background-color: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.app-header h1 {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* Views management */
+.view-panel {
+  display: none;
+}
+
+.view-panel.active {
+  display: block;
+}
+
+/* Panel Header */
+.panel-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.panel-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-left: 16px;
+}
+
+/* Action Buttons (Landing) */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  width: auto;
+}
+
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.btn-success {
+  background-color: var(--color-success);
+  color: #ffffff;
+}
+
+.btn-success:hover {
+  background-color: var(--color-success-hover);
+}
+
+.btn-danger {
+  background-color: var(--color-danger);
+  color: #ffffff;
+  width: 100%;
+}
+
+.btn-danger:hover {
+  background-color: var(--color-danger-hover);
+}
+
+.btn-secondary {
+  background-color: var(--color-secondary);
+  color: #ffffff;
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-secondary-hover);
+}
+
+.btn-back {
+  padding: 8px 14px;
+  font-size: 14px;
+}
+
+/* Settings section */
+.settings-section {
+  border-top: 1px solid var(--border-color);
+  padding-top: 20px;
+  margin-top: 20px;
+}
+
+.settings-section h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+}
+
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.setting-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setting-item label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.range-value-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-value-container input[type="range"] {
+  flex: 1;
+  height: 6px;
+  background: var(--border-color);
+  border-radius: 3px;
+  outline: none;
+}
+
+.badge {
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 48px;
+  text-align: center;
+}
+
+select {
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: #ffffff;
+  outline: none;
+}
+
+.help-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.throughput-preview {
+  margin-top: 16px;
+  background-color: var(--bg-color);
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+/* Drop Zone */
+.drop-zone {
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  background-color: var(--bg-color);
+  margin-bottom: 20px;
+}
+
+.drop-zone:hover {
+  border-color: var(--color-primary);
+}
+
+.drop-zone p {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* File Info Box */
+.file-info {
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.file-info p {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.file-info p:last-child {
+  margin-bottom: 0;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* QR Code & Viewfinder Container */
+.qr-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  aspect-ratio: 1;
+  width: 100%;
+}
+
+.qr-container canvas {
+  width: 100%;
+  max-width: 350px;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  background-color: #000000;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-color);
+}
+
+.video-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Progress Section */
+.progress-container {
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.progress-bar-track {
+  width: 100%;
+  height: 12px;
+  background-color: var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--color-primary);
+  width: 0%;
+}
+
+.progress-text-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.dropped-stats-row {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-color);
+  padding-top: 6px;
+  text-align: center;
+}
+
+#receive-progress-canvas {
+  width: 100%;
+  height: 24px;
+  background-color: #e5e7eb;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 8px;
+}
+
+.status-label {
+  text-align: center;
+  font-weight: 600;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--color-primary);
+}
+
+.instruction {
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+}
+
+.report-card-instruction {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-danger);
+  margin-top: 8px;
+  text-align: center;
+}
+
+.timer-badge {
+  text-align: center;
+  font-weight: 700;
+  color: var(--color-danger);
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+/* Success Overlay */
+.success-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-success);
+  color: #ffffff;
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  text-align: center;
+}
+
+.success-overlay.active {
+  display: flex;
+}
+
+.success-content {
+  max-width: 360px;
+}
+
+.success-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.success-content h2 {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 16px;
+}
+
+.success-details {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.success-details p {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.success-details p:last-child {
+  margin-bottom: 0;
+}
+
+.success-content .btn {
+  background-color: #ffffff;
+  color: var(--color-success);
+  border: 1px solid #ffffff;
+  width: 100%;
+}
+
+.success-content .btn:hover {
+  background-color: #f3f4f6;
+}
+
+.button-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}

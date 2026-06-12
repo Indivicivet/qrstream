@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QRStream - Optical Data Transfer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app" class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <h1>QRStream</h1>
+      <p class="subtitle">Optical Data Transfer Protocol</p>
+    </header>
+
+    <!-- Main Screen -->
+    <main id="main-screen" class="view-panel active">
+      <div class="action-buttons">
+        <button id="btn-show-send" class="btn btn-primary">Send File</button>
+        <button id="btn-show-receive" class="btn btn-success">Receive File</button>
+      </div>
+
+      <!-- Settings Panel -->
+      <section class="settings-section">
+        <h2>Configuration</h2>
+        <div class="settings-grid">
+          <div class="setting-item">
+            <label for="setting-version">QR Code Size (Version 1-40):</label>
+            <div class="range-value-container">
+              <input type="range" id="setting-version" min="1" max="40" value="11">
+              <span id="val-version" class="badge">11</span>
+            </div>
+            <small class="help-text">Higher versions hold more data but are denser to scan.</small>
+          </div>
+
+          <div class="setting-item">
+            <label for="setting-ecc">Error Correction Level:</label>
+            <select id="setting-ecc">
+              <option value="L">L (~7% recovery)</option>
+              <option value="M" selected>M (~15% recovery)</option>
+              <option value="Q">Q (~25% recovery)</option>
+              <option value="H">H (~30% recovery)</option>
+            </select>
+          </div>
+
+          <div class="setting-item">
+            <label for="setting-hz">Refresh Rate (Hz):</label>
+            <div class="range-value-container">
+              <input type="range" id="setting-hz" min="1" max="30" value="10">
+              <span id="val-hz" class="badge">10 Hz</span>
+            </div>
+            <small class="help-text">Framerate of the flashing QR code.</small>
+          </div>
+
+          <div class="setting-item">
+            <label for="setting-alignment">Alignment Delay (Seconds):</label>
+            <div class="range-value-container">
+              <input type="range" id="setting-alignment" min="1" max="10" value="3">
+              <span id="val-alignment" class="badge">3s</span>
+            </div>
+            <small class="help-text">Static display duration for Frame 0 (Metadata).</small>
+          </div>
+        </div>
+
+        <div id="throughput-preview" class="throughput-preview">
+          Calculated Capacity: <strong id="val-capacity">--</strong> bytes/frame | 
+          Est. Payload: <strong id="val-payload">--</strong> bytes/frame | 
+          Est. Speed: <strong id="val-speed">--</strong> KB/s
+        </div>
+      </section>
+    </main>
+
+    <!-- Send Screen -->
+    <section id="send-screen" class="view-panel">
+      <div class="panel-header">
+        <button class="btn btn-back btn-secondary">&larr; Back</button>
+        <h2>Send Mode</h2>
+      </div>
+
+      <!-- File Select Mode -->
+      <div id="send-init-view">
+        <div id="drop-zone" class="drop-zone">
+          <p>Drag & drop a file here, or click to choose</p>
+          <input type="file" id="file-input" style="display: none;">
+        </div>
+        <div id="file-info" class="file-info hidden">
+          <p><strong>File:</strong> <span id="info-name">filename.bin</span></p>
+          <p><strong>Size:</strong> <span id="info-size">0 KB</span></p>
+          <p><strong>Required Frames:</strong> <span id="info-frames">0</span></p>
+          <button id="btn-start-send" class="btn btn-primary btn-block">Start Transmission</button>
+        </div>
+      </div>
+
+      <!-- Active Sending Mode -->
+      <div id="send-active-view" class="hidden">
+        <div id="send-status-label" class="status-label">Initializing...</div>
+        <div class="qr-container">
+          <canvas id="send-qr-canvas"></canvas>
+        </div>
+        <div class="progress-container">
+          <div class="progress-bar-track">
+            <div id="send-progress-bar" class="progress-bar-fill" style="width: 0%"></div>
+          </div>
+          <div class="progress-text-row">
+            <span id="send-progress-text">Frame 0 of 0</span>
+            <span id="send-progress-percent">0%</span>
+          </div>
+        </div>
+        <button id="btn-cancel-send" class="btn btn-danger">Stop</button>
+      </div>
+
+      <!-- Sender Report Card Scanning Mode -->
+      <div id="send-scan-view" class="hidden">
+        <p class="instruction">Flip phones: Scan the Receiver's Report Card QR code.</p>
+        <div id="send-timer" class="timer-badge">20s remaining</div>
+        <div class="video-container">
+          <video id="send-video" autoplay playsinline></video>
+        </div>
+        <button id="btn-cancel-scan" class="btn btn-danger">Cancel Scan</button>
+      </div>
+    </section>
+
+    <!-- Receive Screen -->
+    <section id="receive-screen" class="view-panel">
+      <div class="panel-header">
+        <button class="btn btn-back btn-secondary">&larr; Back</button>
+        <h2>Receive Mode</h2>
+      </div>
+
+      <div id="receive-init-view">
+        <p class="instruction">Align camera with the Sender's screen.</p>
+        <button id="btn-start-receive" class="btn btn-success btn-block">Start Camera & Receive</button>
+      </div>
+
+      <div id="receive-active-view" class="hidden">
+        <div id="receive-status-label" class="status-label">Waiting for metadata frame...</div>
+        
+        <!-- Live view container -->
+        <div class="video-container" id="receive-video-wrapper">
+          <video id="receive-video" autoplay playsinline></video>
+        </div>
+
+        <!-- Report card QR display container -->
+        <div id="report-card-container" class="qr-container hidden">
+          <canvas id="report-card-canvas"></canvas>
+          <p class="report-card-instruction">Flip phones: Let the Sender scan this Report Card.</p>
+        </div>
+
+        <div class="progress-container">
+          <canvas id="receive-progress-canvas" height="24"></canvas>
+          <div class="progress-text-row">
+            <span id="receive-progress-text">0 / 0 frames received</span>
+            <span id="receive-progress-percent">0%</span>
+          </div>
+          <div id="receive-dropped-stats" class="dropped-stats-row">
+            Good: <span id="val-good-frames">0</span> | Dropped: <span id="val-dropped-frames">0</span> (<span id="val-dropped-percent">0%</span>)
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button id="btn-cancel-receive" class="btn btn-danger">Stop</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Success Screen Overlay -->
+    <section id="success-screen" class="success-overlay">
+      <div class="success-content">
+        <div class="success-icon">&#10004;</div>
+        <h2>Transfer Successful!</h2>
+        <div class="success-details">
+          <p><strong>File:</strong> <span id="success-filename">--</span></p>
+          <p><strong>Size:</strong> <span id="success-filesize">--</span></p>
+        </div>
+        <button id="btn-success-done" class="btn btn-primary">Done</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- External Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script src="qrstream.js"></script>
+</body>
+</html>
