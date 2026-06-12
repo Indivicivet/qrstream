@@ -64,6 +64,10 @@ let receiverLastScanTime = null;
 let receiverInactivityInterval = null;
 let currentActiveVideo = null;
 
+// Shared scanning canvas to prevent DOM garbage collection overhead in animation loop
+const scanCanvas = document.createElement('canvas');
+const scanCtx = scanCanvas.getContext('2d');
+
 // DOM Event Bindings
 document.addEventListener('DOMContentLoaded', () => {
   // Initial Config Preview
@@ -73,18 +77,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('setting-version').addEventListener('input', () => {
     document.getElementById('val-version').textContent = document.getElementById('setting-version').value;
     updateConfigPreview();
-    if (selectedFile) updateFileInfo();
   });
   document.getElementById('setting-ecc').addEventListener('change', () => {
     updateConfigPreview();
-    if (selectedFile) updateFileInfo();
   });
   document.getElementById('setting-hz').addEventListener('input', () => {
     document.getElementById('val-hz').textContent = `${document.getElementById('setting-hz').value} Hz`;
     updateConfigPreview();
-  });
-  document.getElementById('setting-alignment').addEventListener('input', () => {
-    document.getElementById('val-alignment').textContent = `${document.getElementById('setting-alignment').value}s`;
   });
 
   // Navigation Click Handlers
@@ -140,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Sender Actions
-  document.getElementById('btn-start-send').addEventListener('click', startSenderTransmissionWorkflow);
+  document.getElementById('btn-start-sprint').addEventListener('click', startSenderSprintWorkflow);
   document.getElementById('btn-cancel-send').addEventListener('click', cancelSenderWorkflow);
   document.getElementById('btn-cancel-scan').addEventListener('click', cancelSenderWorkflow);
 
@@ -232,29 +231,11 @@ function stopSenderTransmission() {
 function handleFileSelection(file) {
   selectedFile = file;
   const reader = new FileReader();
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     selectedFileData = new Uint8Array(e.target.result);
-    updateFileInfo();
+    await initializeSenderUploadWorkflow();
   };
   reader.readAsArrayBuffer(file);
-}
-
-function updateFileInfo() {
-  if (!selectedFile) return;
-  document.getElementById('info-name').textContent = selectedFile.name;
-  document.getElementById('info-size').textContent = `${(selectedFile.size / 1024).toFixed(2)} KB`;
-  
-  const version = parseInt(document.getElementById('setting-version').value);
-  const ecc = document.getElementById('setting-ecc').value;
-  
-  try {
-    const params = calculateSessionParams(selectedFileData.length, version, ecc);
-    document.getElementById('info-frames').textContent = `${params.totalDataFrames} data frames (+1 metadata frame)`;
-    document.getElementById('file-info').classList.remove('hidden');
-  } catch (err) {
-    alert(err.message);
-    document.getElementById('file-info').classList.add('hidden');
-  }
 }
 
 // Dynamic N-byte Frame Parameters Calculator
@@ -308,28 +289,32 @@ function updateConfigPreview() {
 }
 
 // Sender Workflows
-async function startSenderTransmissionWorkflow() {
+async function initializeSenderUploadWorkflow() {
   if (!selectedFileData || !selectedFile) return;
 
   const version = parseInt(document.getElementById('setting-version').value);
   const ecc = document.getElementById('setting-ecc').value;
-  const hz = parseInt(document.getElementById('setting-hz').value);
-  const alignmentSec = parseInt(document.getElementById('setting-alignment').value);
 
-  // Calculate parameters
   let params;
   try {
     params = calculateSessionParams(selectedFileData.length, version, ecc);
   } catch (err) {
     alert(err.message);
+    resetSenderUI();
     return;
   }
 
+  // Transition UI instantly to active view
   document.getElementById('send-init-view').classList.add('hidden');
   document.getElementById('send-active-view').classList.remove('hidden');
   document.getElementById('send-status-label').textContent = 'Pre-encoding QR frames...';
 
-  // Step 1: Pre-render all QR codes into canvases
+  // Populate file details
+  document.getElementById('send-info-name').textContent = selectedFile.name;
+  document.getElementById('send-info-size').textContent = `${(selectedFile.size / 1024).toFixed(2)} KB`;
+  document.getElementById('send-info-frames').textContent = `${params.totalDataFrames} data frames (+1 metadata frame)`;
+
+  // Pre-render QR codes
   try {
     await preRenderQRCodes(params, version, ecc);
   } catch (err) {
@@ -338,15 +323,39 @@ async function startSenderTransmissionWorkflow() {
     return;
   }
 
-  // Step 2: Phase 1 - Alignment Window (Frame 0 Static Display)
-  document.getElementById('send-status-label').textContent = `Phase 1: Align Screens (Frame 0 for ${alignmentSec}s)`;
+  // Draw Frame 0 immediately
   drawPreRenderedQR(0);
+
+  // Ready for alignment
+  document.getElementById('send-status-label').textContent = 'Align screens. Tap Start to transmit.';
   document.getElementById('send-progress-text').textContent = `Frame 0 of ${params.totalDataFrames}`;
-  document.getElementById('send-progress-percent').textContent = '0%';
+  document.getElementById('send-progress-percent').textContent = 'Ready';
   document.getElementById('send-progress-bar').style.width = '0%';
 
+  // Reset Start button state
+  const startBtn = document.getElementById('btn-start-sprint');
+  if (startBtn) {
+    startBtn.disabled = false;
+    startBtn.style.display = 'inline-flex';
+  }
+}
+
+function startSenderSprintWorkflow() {
+  const startBtn = document.getElementById('btn-start-sprint');
+  if (startBtn) {
+    startBtn.disabled = true;
+    startBtn.style.display = 'none';
+  }
+
+  const version = parseInt(document.getElementById('setting-version').value);
+  const ecc = document.getElementById('setting-ecc').value;
+  const hz = parseInt(document.getElementById('setting-hz').value);
+
+  const params = calculateSessionParams(selectedFileData.length, version, ecc);
+
+  document.getElementById('send-status-label').textContent = 'Phase 1: Starting in 0.5s...';
+
   setTimeout(() => {
-    // Step 3: Phase 1 - The Sprint
     document.getElementById('send-status-label').textContent = 'Phase 1: Sprint Transmitting...';
     let currentFrameIdx = 1;
     const intervalMs = 1000 / hz;
@@ -372,7 +381,7 @@ async function startSenderTransmissionWorkflow() {
       }
     }, intervalMs);
 
-  }, alignmentSec * 1000);
+  }, 500); // Hardcoded 0.5s delay
 }
 
 function cancelSenderWorkflow() {
@@ -507,14 +516,14 @@ function processSenderReportCardFrame() {
   if (!senderScanActive) return;
   
   const video = document.getElementById('send-video');
-  if (video.readyState === video.HAVE_CURRENT_DATA) {
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  if (video.readyState >= video.HAVE_CURRENT_DATA) {
+    if (scanCanvas.width !== video.videoWidth || scanCanvas.height !== video.videoHeight) {
+      scanCanvas.width = video.videoWidth;
+      scanCanvas.height = video.videoHeight;
+    }
+    scanCtx.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
     
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
       inversionAttempts: "dontInvert"
     });
@@ -648,14 +657,14 @@ function processReceiverFrame() {
   if (!receiverScanActive) return;
   
   const video = document.getElementById('receive-video');
-  if (video.readyState === video.HAVE_CURRENT_DATA) {
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  if (video.readyState >= video.HAVE_CURRENT_DATA) {
+    if (scanCanvas.width !== video.videoWidth || scanCanvas.height !== video.videoHeight) {
+      scanCanvas.width = video.videoWidth;
+      scanCanvas.height = video.videoHeight;
+    }
+    scanCtx.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
     
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
       inversionAttempts: "dontInvert"
     });

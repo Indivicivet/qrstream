@@ -52,14 +52,7 @@
             <small class="help-text">Framerate of the flashing QR code.</small>
           </div>
 
-          <div class="setting-item">
-            <label for="setting-alignment">Alignment Delay (Seconds):</label>
-            <div class="range-value-container">
-              <input type="range" id="setting-alignment" min="1" max="10" value="3">
-              <span id="val-alignment" class="badge">3s</span>
-            </div>
-            <small class="help-text">Static display duration for Frame 0 (Metadata).</small>
-          </div>
+          <!-- Alignment Delay hardcoded at 0.5s -->
         </div>
 
         <div id="throughput-preview" class="throughput-preview">
@@ -94,6 +87,11 @@
       <!-- Active Sending Mode -->
       <div id="send-active-view" class="hidden">
         <div id="send-status-label" class="status-label">Initializing...</div>
+        <div id="send-file-details" class="file-info" style="margin-bottom: 12px; padding: 10px; font-size: 13px;">
+          <strong>File:</strong> <span id="send-info-name">--</span><br>
+          <strong>Size:</strong> <span id="send-info-size">--</span> | 
+          <strong>Frames:</strong> <span id="send-info-frames">--</span>
+        </div>
         <div class="qr-container">
           <canvas id="send-qr-canvas"></canvas>
         </div>
@@ -106,7 +104,10 @@
             <span id="send-progress-percent">0%</span>
           </div>
         </div>
-        <button id="btn-cancel-send" class="btn btn-danger">Stop</button>
+        <div class="button-row">
+          <button id="btn-start-sprint" class="btn btn-primary" style="flex: 1;">Start Transmission</button>
+          <button id="btn-cancel-send" class="btn btn-danger" style="flex: 1;">Stop</button>
+        </div>
       </div>
 
       <!-- Sender Report Card Scanning Mode -->
