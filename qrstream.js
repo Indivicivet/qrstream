@@ -51,7 +51,6 @@ let selectedFile = null;
 let selectedFileData = null;
 let senderPreRenderedQRs = []; // Array of offscreen canvas elements
 let senderLoopInterval = null;
-let senderScanTimeout = null;
 let senderScanActive = false;
 let receiverScanActive = false;
 let activeSessionId = null;
@@ -237,12 +236,8 @@ function stopCamera(videoEl) {
 
 function stopSenderTransmission() {
   if (senderLoopInterval) {
-    clearInterval(senderLoopInterval);
+    clearTimeout(senderLoopInterval);
     senderLoopInterval = null;
-  }
-  if (senderScanTimeout) {
-    clearTimeout(senderScanTimeout);
-    senderScanTimeout = null;
   }
   senderScanActive = false;
 }
@@ -545,24 +540,6 @@ async function initiateSenderReportCardScan(params) {
     // Start scanning report card
     requestAnimationFrame(processSenderReportCardFrame);
 
-    // 20-second timeout window
-    let timeLeft = 20;
-    const sendTimer = document.getElementById('send-timer');
-    sendTimer.textContent = `${timeLeft}s remaining`;
-    
-    senderScanTimeout = setInterval(() => {
-      timeLeft--;
-      sendTimer.textContent = `${timeLeft}s remaining`;
-      
-      if (timeLeft <= 0) {
-        clearInterval(senderScanTimeout);
-        senderScanTimeout = null;
-        alert('Timeout: No Report Card QR code detected.');
-        stopSenderTransmission();
-        document.getElementById('btn-cancel-scan').click();
-      }
-    }, 1000);
-
   } catch (err) {
     alert(`Camera error on Sender: ${err.message}`);
     document.getElementById('btn-cancel-scan').click();
@@ -602,10 +579,6 @@ function processSenderReportCardFrame() {
           if (scannedSessionId === activeSessionId && scannedTotalFrames === senderPreRenderedQRs.length - 1) { // Total data frames count
             // Stop scanning
             senderScanActive = false;
-            if (senderScanTimeout) {
-              clearInterval(senderScanTimeout);
-              senderScanTimeout = null;
-            }
             stopCamera(video);
             
             // Parse missing frames from bitfield
