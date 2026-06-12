@@ -95,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-show-receive').addEventListener('click', () => {
     showView('receive-screen');
     resetReceiverUI();
+    startReceiverWorkflow();
   });
 
   document.querySelectorAll('.btn-back').forEach(btn => {
@@ -144,7 +145,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-cancel-scan').addEventListener('click', cancelSenderWorkflow);
 
   // Receiver Actions
-  document.getElementById('btn-start-receive').addEventListener('click', startReceiverWorkflow);
   document.getElementById('btn-cancel-receive').addEventListener('click', cancelReceiverWorkflow);
 });
 
@@ -173,8 +173,7 @@ function resetSenderUI() {
 }
 
 function resetReceiverUI() {
-  document.getElementById('receive-init-view').classList.remove('hidden');
-  document.getElementById('receive-active-view').classList.add('hidden');
+  document.getElementById('receive-active-view').classList.remove('hidden');
   document.getElementById('report-card-container').classList.add('hidden');
   
   const receiveVideoWrapper = document.getElementById('receive-video-wrapper');
@@ -759,7 +758,7 @@ function handleScannedReceiverData(binaryData) {
       receiverFrames.set(0, binaryData.slice(11));
       receiverLastScanTime = Date.now();
       
-      document.getElementById('receive-status-label').textContent = 'Metadata loaded. Receiving data...';
+      document.getElementById('receive-status-label').textContent = 'Metadata loaded! Tell the Sender to tap Start.';
       updateReceiverProgressUI();
     }
   } else {
